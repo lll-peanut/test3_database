@@ -17,6 +17,9 @@ public class JdbcUtils {
 
     private static final String PROPERTIES_FILE_NAME = "druid.properties";
 
+    /**
+     * 静态方法块：用于将配置文件加载到dataSource里创建连接池实例
+     */
     static {
         try (InputStream resourceAsStream = JdbcUtils.class.getClassLoader().getResourceAsStream(PROPERTIES_FILE_NAME);) {
             Properties properties = new Properties();
@@ -27,6 +30,10 @@ public class JdbcUtils {
         }
     }
 
+    /**
+     * 获取连接
+     * @return
+     */
     public static Connection getConnection() {
         try {
             return dataSource.getConnection();
@@ -35,6 +42,12 @@ public class JdbcUtils {
         }
     }
 
+    /**
+     * 释放资源
+     * @param rs
+     * @param stmt
+     * @param conn
+     */
     public static void getClose(ResultSet rs, PreparedStatement stmt, Connection conn) {
         try {
             if (rs != null) {
@@ -51,6 +64,15 @@ public class JdbcUtils {
         }
     }
 
+    /**
+     * 封装查询sql
+     * 参数rowMapper用来映射resultSet来获取list
+     * @param sql
+     * @param rowMapper
+     * @param params
+     * @return
+     * @param <T>
+     */
     private static <T> List<T> executeQuery(String sql, RowMapper<T> rowMapper, Object... params) {
         Connection connection = null;
         PreparedStatement preparedStatement = null;
@@ -65,25 +87,33 @@ public class JdbcUtils {
             }
             resultSet = preparedStatement.executeQuery();
 
-            // 在资源关闭前，完成结果集处理
             while (resultSet.next()) {
                 list.add(rowMapper.mapRow(resultSet));
             }
         } catch (SQLException e) {
             throw new RuntimeException(DatebaseConstant.SELECT_FAILURE + sql, e);
         } finally {
-            // 此时结果集已处理完毕，安全关闭所有资源
+
             getClose(resultSet, preparedStatement, connection);
         }
         return list;
     }
 
-
+    /**
+     * 函数式接口，用来映射实体类
+     * @param <T>
+     */
     @FunctionalInterface
     private interface RowMapper<T> {
         T mapRow(ResultSet rs) throws SQLException;
     }
 
+    /**
+     * 查询商品
+     * @param sql
+     * @param params
+     * @return
+     */
     public static List<Good> goodQuery(String sql, Object... params) {
 
         return executeQuery(sql, rs -> new Good(
@@ -94,6 +124,12 @@ public class JdbcUtils {
         ), params);
     }
 
+    /**
+     * 查询订单
+     * @param sql
+     * @param params
+     * @return
+     */
     public static List<Order> orderQuery(String sql, Object... params) {
 
         return executeQuery(sql, rs -> new Order(
@@ -104,6 +140,12 @@ public class JdbcUtils {
         ), params);
     }
 
+    /**
+     * 封装增删改
+     * @param sql
+     * @param params
+     * @return
+     */
     public static int update(String sql, Object... params) {
         Connection connection = null;
         PreparedStatement preparedStatement = null;
@@ -133,10 +175,21 @@ public class JdbcUtils {
         }
     }
 
+    /**
+     * 判断价格是否合理
+     * @param price
+     * @return
+     */
     public static boolean isPriceIllegal(double price) {
         return price <= DatebaseConstant.MIN_PRICE || price > DatebaseConstant.MAX_PRICE;
     }
 
+    /**
+     * 计算并返回pageNum
+     * @param pageNum
+     * @param pageSize
+     * @return
+     */
     public static int updatePageNum(int pageNum, int pageSize) {
         if (pageNum < 1) {
             pageNum = 1;

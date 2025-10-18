@@ -16,6 +16,11 @@ public class GoodServiceImp implements GoodService {
 
     GoodMapper goodMapper = new GoodMapper();
 
+    /**
+     * 增加商品
+     * @param good
+     * @return
+     */
     public int insertGood(Good good) {
         UUID uuid = UUID.randomUUID();
         good.setId(uuid.toString());
@@ -23,12 +28,23 @@ public class GoodServiceImp implements GoodService {
         return goodMapper.insert(good);
     }
 
+    /**
+     * 更新商品
+     * @param good
+     * @return
+     */
     @Override
     public int updateGood(Good good) {
         check(good);
         return goodMapper.update(good);
     }
 
+    /**
+     * 删除商品
+     * @param ids
+     * @return
+     * @throws SQLException
+     */
     @Override
     public int deleteGood(List<String> ids) throws SQLException {
         TransactionUtils.beginTransaction();
@@ -49,11 +65,25 @@ public class GoodServiceImp implements GoodService {
         return 1;
     }
 
+    /**
+     * 通过id查询商品
+     * 其中，不管isDeleted为何值都能查询出来
+     * @param id
+     * @return
+     */
     @Override
     public Good getGoodById(String id) {
         return goodMapper.selectById(id);
     }
 
+    /**
+     * 通过名字模糊查询
+     * 名字必须是前面的字不能是中间获取最后
+     * @param goodName
+     * @param pageNum
+     * @param pageSize
+     * @return
+     */
     @Override
     public List<Good> getGoodByName(String goodName, int pageNum, int pageSize) {
         pageNum = JdbcUtils.updatePageNum(pageNum, pageSize);
@@ -63,12 +93,22 @@ public class GoodServiceImp implements GoodService {
         return goodMapper.selectByName(goodName, pageNum, pageSize);
     }
 
+    /**
+     * 获取所有商品
+     * @param pageNum
+     * @param pageSize
+     * @return
+     */
     @Override
     public List<Good> getAllGood(int pageNum, int pageSize) {
         pageNum = JdbcUtils.updatePageNum(pageNum, pageSize);
         return goodMapper.selectAll(pageNum, pageSize);
     }
 
+    /**
+     * 对商品字段进行检查
+     * @param good
+     */
     private void check(Good good) {
         if (JdbcUtils.isPriceIllegal(good.getPrice())) {
             throw new BaseExpection(DatebaseConstant.PRICE_ERROR);
