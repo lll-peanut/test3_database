@@ -4,6 +4,7 @@ import com.alibaba.druid.pool.DruidDataSourceFactory;
 import com.peanut.constant.DatebaseConstant;
 import com.peanut.pojo.Good;
 import com.peanut.pojo.Order;
+import com.peanut.pojo.OrderGood;
 
 import javax.sql.DataSource;
 import java.io.InputStream;
@@ -134,8 +135,17 @@ public class JdbcUtils {
 
         return executeQuery(sql, rs -> new Order(
                 rs.getString("id"),
-                rs.getString("good_id"),
                 rs.getTimestamp("time").toLocalDateTime(),
+                rs.getDouble("price")
+        ), params);
+    }
+
+    public static List<OrderGood> orderGoodQuery(String sql, Object... params) {
+        return executeQuery(sql, rs -> new OrderGood(
+                rs.getString("id"),
+                rs.getString("order_id"),
+                rs.getString("good_id"),
+                rs.getInt("num"),
                 rs.getDouble("price")
         ), params);
     }

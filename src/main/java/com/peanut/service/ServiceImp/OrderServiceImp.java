@@ -3,12 +3,12 @@ package com.peanut.service.ServiceImp;
 import com.peanut.constant.DatebaseConstant;
 import com.peanut.expection.BaseExpection;
 import com.peanut.mapper.GoodMapper;
+import com.peanut.mapper.OrderGoodMapper;
 import com.peanut.mapper.OrderMapper;
-import com.peanut.pojo.Good;
-import com.peanut.pojo.Order;
-import com.peanut.pojo.OrderVO;
+import com.peanut.pojo.*;
 import com.peanut.service.OrderService;
 import com.peanut.tool.JdbcUtils;
+import com.peanut.tool.ToolUtils;
 import com.peanut.tool.TransactionUtils;
 
 
@@ -23,30 +23,40 @@ public class OrderServiceImp implements OrderService {
 
     private OrderMapper orderMapper = new OrderMapper();
 
-
+    private OrderGoodMapper orderGoodMapper = new OrderGoodMapper();
     /**
      * 批量新增订单（支持事务）
      *
-     * @param orders 待新增的订单列表
+     * @param goodRequests 待新增的商品信息
      * @return 1（表示批量新增逻辑执行完成，成功时返回）
      * @throws BaseExpection 自定义业务异常（如参数校验失败、插入失败）
      * @throws SQLException  SQL执行异常
      */
-    public int insert(List<Order> orders) throws BaseExpection, SQLException {
+    public int insert(List<OrderGoodRequest> goodRequests) throws BaseExpection, SQLException {
         try {
             LocalDateTime time = LocalDateTime.now();
             TransactionUtils.beginTransaction();
-            for (Order order : orders) {
-                UUID uuid = UUID.randomUUID();
-                order.setId(uuid.toString());
-                order.setTime(time);
-                check(order);
-                if (orderMapper.insertOrder(order) == 0) {
+            String orderId = UUID.randomUUID().toString();
+            double totalPrice = 0;
+            for (OrderGoodRequest goodRequest : goodRequests) {
+                String uuid = UUID.randomUUID().toString();
+                Good good = check(goodRequest);
+                OrderGood orderGood = new OrderGood(uuid, orderId, good.getId(), goodRequest.getNum(), good.getPrice());
+                totalPrice += orderGood.getNum() * good.getPrice();
+                int insert = orderGoodMapper.insert(orderGood);
+                if (insert == 0) {
                     throw new BaseExpection(DatebaseConstant.ORDER_INSERT_ERROR);
                 } else {
-                    System.out.println(order.getId() + " " + DatebaseConstant.ORDER_INSERT_SUCCESS);
+                    System.out.println(good.getName() + " " + goodRequest.getNum() + "件 " + DatebaseConstant.ORDER_INSERT_SUCCESS);
                 }
             }
+            int isInsertOrder = orderMapper.insertOrder(new Order(orderId, time, totalPrice));
+            if (isInsertOrder == 0) {
+                throw new BaseExpection(DatebaseConstant.ORDER_INSERT_ERROR);
+            } else {
+                System.out.println(orderId + " 全部" + DatebaseConstant.ORDER_INSERT_SUCCESS);
+            }
+
             TransactionUtils.commitTransaction();
         } catch (Exception e) {
             TransactionUtils.rollbackTransaction();
@@ -67,14 +77,24 @@ public class OrderServiceImp implements OrderService {
     public int delete(List<String> ids) throws SQLException {
         try {
             TransactionUtils.beginTransaction();
+            String orderId = null;
             for (int i = 0; i < ids.size(); i++) {
                 String id = ids.get(i);
-                Order order = orderMapper.selectById(id);
-                if (order == null) {
-                    throw new BaseExpection(DatebaseConstant.ORDERD_NOT_EXIST);
+                OrderGood orderGood = orderGoodMapper.selectById(id);
+                if (orderGood == null) {
+                    throw new BaseExpection(DatebaseConstant.SELECT_FAILURE);
                 }
-                int i1 = orderMapper.deleteOrder(ids.get(i));
-                if (i1 == 0) {
+                orderId = orderGood.getOrderId();
+                int delete = orderGoodMapper.delete(id);
+                if (delete == 0) {
+                    throw new BaseExpection(DatebaseConstant.DELETE_FAILURE);
+                }
+            }
+            List<OrderGood> orderGoods = orderGoodMapper.selectByOrderId(orderId);
+
+            if (orderGoods == null || orderGoods.size() == 0) {
+                int delete = orderMapper.deleteOrder(orderId);
+                if (delete == 0) {
                     throw new BaseExpection(DatebaseConstant.DELETE_FAILURE);
                 }
             }
@@ -93,26 +113,22 @@ public class OrderServiceImp implements OrderService {
      * @return 影响的行数（1表示更新成功，0表示更新失败）
      */
     public int update(Order order) {
-        order.setTime(LocalDateTime.now());
-        check(order);
-        return orderMapper.updateOrder(order);
+        return 1;
     }
 
     /**
      * 订单参数合法性校验（私有工具方法）
      * 校验价格、订单ID、商品ID及商品存在性，不合法则抛出自定义异常
      *
-     * @param order 待校验的订单对象
+     * @param orderGoodRequest 待校验的订单对象
      */
-    private void check(Order order) {
-        if (JdbcUtils.isPriceIllegal(order.getPrice())) {
-            throw new BaseExpection(DatebaseConstant.PRICE_ERROR);
-        }
-        if (order.getId() == null || order.getId().equals("")) {
-            throw new BaseExpection(DatebaseConstant.ORDER_ID_NOT_EXIST);
+    private Good check(OrderGoodRequest orderGoodRequest) {
+        int num = orderGoodRequest.getNum();
+        if (ToolUtils.isNumIllegal(num)) {
+            throw new BaseExpection(DatebaseConstant.GOOD_NUM_ILLEGAL);
         }
 
-        String goodId = order.getGood_id();
+        String goodId = orderGoodRequest.getGoodId();
 
         if (goodId == null || goodId.equals("")) {
             throw new BaseExpection(DatebaseConstant.GOODID_NOT_EXIST);
@@ -123,24 +139,23 @@ public class OrderServiceImp implements OrderService {
         if (good == null) {
             throw new BaseExpection(DatebaseConstant.GOOD_NOT_EXIST);
         }
+        return good;
     }
 
     /**
      * 根据订单ID查询订单详情（返回VO对象，包含商品关联信息）
      *
-     * @param id 订单ID
+     * @param orderId 订单ID
      * @return OrderVO（订单+商品组合信息）；null（订单不存在时）
      */
     @Override
-    public OrderVO selectById(String id) {
-        Order order = orderMapper.selectById(id);
+    public OrderVO selectById(String orderId) {
+        Order order = orderMapper.selectById(orderId);
         if (order == null) {
             return null;
         }
-        String goodId = order.getGood_id();
-        Good good = goodMapper.selectById(goodId);
-        OrderVO orderVO = new OrderVO(order.getId(), order.getGood_id(), order.getTime(), order.getPrice(), good.getName(), good.getPrice());
-        return orderVO;
+        List<GoodInfo> goodInfos = getGoodInfos(orderId);
+        return new OrderVO(orderId, order.getTime(), order.getPrice(), goodInfos);
     }
 
     /**
@@ -195,11 +210,22 @@ public class OrderServiceImp implements OrderService {
     private List<OrderVO> getOrderVO(List<Order> orders) {
         List<OrderVO> orderVOS = new ArrayList<OrderVO>();
         for (Order order : orders) {
-            String goodId = order.getGood_id();
-            Good good = goodMapper.selectById(goodId);
-            OrderVO orderVO = new OrderVO(order.getId(), order.getGood_id(), order.getTime(), order.getPrice(), good.getName(), good.getPrice());
+            String orderId = order.getId();
+            List<GoodInfo> goodInfos = getGoodInfos(orderId);
+            OrderVO orderVO = new OrderVO(order.getId(), order.getTime(), order.getPrice(), goodInfos);
             orderVOS.add(orderVO);
         }
         return orderVOS;
+    }
+
+    private List<GoodInfo> getGoodInfos(String orderId) {
+        ArrayList<GoodInfo> goodInfos = new ArrayList<>();
+        List<OrderGood> orderGoods = orderGoodMapper.selectByOrderId(orderId);
+        for (OrderGood orderGood : orderGoods) {
+            Good good = goodMapper.selectById(orderGood.getGoodId());
+            goodInfos.add(new GoodInfo(orderGood.getGoodId(), orderGood.getNum(), good.getName(), good.getPrice()));
+
+        }
+        return goodInfos;
     }
 }

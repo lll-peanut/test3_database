@@ -10,17 +10,17 @@ public class OrderMapper {
 
     private static final String UPDATE_SQL = "update `order` set `good_id`=?, `time`=?, price = ? where `id` = ?";
 
-    private static final String INSERT_SQL = "insert into `order` (`id`, `good_id`, `time`, `price`) values (?, ?, ?, ?)";
+    private static final String INSERT_SQL = "insert into `order` (`id`,`time`, `price`) values (?, ?, ?)";
 
     private static final String DELETE_SQL = "delete from `order` where `id` = ?";
 
-    private static final String SELECT_SQL = "select `id`, `good_id`, `time`, `price` from `order` limit ?,?";
+    private static final String SELECT_SQL = "select `id`, `time`, `price` from `order` limit ?,?";
 
-    private static final String SELECT_SQL_PRICE_ASC = "select `id`, `good_id`, `time`, `price` from `order` ORDER BY price ASC limit ?,?";
+    private static final String SELECT_SQL_PRICE_ASC = "select `id`, `time`, `price` from `order` ORDER BY price ASC limit ?,?";
 
-    private static final String SELECT_ID_SQL = "select `id`, `good_id`, `time`, `price` from `order` where `id` = ?";
+    private static final String SELECT_ID_SQL = "select `id`, `time`, `price` from `order` where `id` = ?";
 
-    private static final String SELECT_SQL_TIME_ASC = "select `id`, `good_id`, `time`, `price` from `order` ORDER BY `time` ASC limit ?,?";
+    private static final String SELECT_SQL_TIME_ASC = "select `id`, `time`, `price` from `order` ORDER BY `time` ASC limit ?,?";
 
     /**
      * 分页查询所有订单（无排序）
@@ -80,7 +80,7 @@ public class OrderMapper {
      */
     public int insertOrder(Order order) {
         // 使用事务工具类执行更新，确保插入操作在事务中执行
-        return TransactionUtils.update(INSERT_SQL, order.getId(), order.getGood_id(), order.getTime(), order.getPrice());
+       return TransactionUtils.update(INSERT_SQL, order.getId(), order.getTime(), order.getPrice());
     }
 
     /**
@@ -101,6 +101,6 @@ public class OrderMapper {
      * @return 影响的行数（1表示成功，0表示失败）
      */
     public int updateOrder(Order order) {
-        return JdbcUtils.update(UPDATE_SQL, order.getGood_id(), order.getTime(), order.getPrice(), order.getId());
+        return JdbcUtils.update(UPDATE_SQL, order.getTime(), order.getPrice(), order.getId());
     }
 }

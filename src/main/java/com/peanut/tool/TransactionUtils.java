@@ -94,7 +94,6 @@ public class TransactionUtils {
             }
 
             int affectedRows = preparedStatement.executeUpdate();
-            System.out.println("受影响的行数为: " + affectedRows);
             return affectedRows;
 
         } catch (SQLException e) {

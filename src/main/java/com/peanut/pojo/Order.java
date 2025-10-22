@@ -4,13 +4,11 @@ import java.time.LocalDateTime;
 
 public class Order {
     private String id;
-    private String good_id;
     private LocalDateTime time;
     private double price;
 
-    public Order(String id, String good_id, LocalDateTime time, double price) {
+    public Order(String id, LocalDateTime time, double price) {
         this.id = id;
-        this.good_id = good_id;
         this.time = time;
         this.price = price;
     }
@@ -23,14 +21,6 @@ public class Order {
 
     public void setId(String id) {
         this.id = id;
-    }
-
-    public String getGood_id() {
-        return good_id;
-    }
-
-    public void setGood_id(String good_id) {
-        this.good_id = good_id;
     }
 
     public LocalDateTime getTime() {
@@ -53,7 +43,6 @@ public class Order {
     public String toString() {
         return "Order{" +
                 "id='" + id + '\'' +
-                ", good_id='" + good_id + '\'' +
                 ", time=" + time +
                 ", price=" + price +
                 '}';
